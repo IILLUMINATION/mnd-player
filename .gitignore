@@ -6,3 +6,5 @@ pubspec.lock
 *.iml
 .idea/
 .vscode/
+.flutter-plugins-dependencies
+pubspec.lock
