@@ -61,6 +61,11 @@ class FileStorage {
 
   static final Map<String, _Lock> _locks = {};
 
+  /// Set to an [InMemoryAssetStore] instance to bypass disk I/O entirely.
+  /// When set, all [readJsonFile], [exists], and [getFilePath] calls will
+  /// be served from memory. Used for web/headless environments.
+  static dynamic memoryStore;
+
   static Future<T> synchronized<T>(String key, Future<T> Function() func) {
     final lock = _locks.putIfAbsent(key, () => _Lock());
     return lock.synchronized(func);
@@ -88,6 +93,7 @@ class FileStorage {
   }
 
   static Future<String> getFilePath(String relativePath) async {
+    if (memoryStore != null) return relativePath;
     final appDir = await getAppDirectory();
     return p.join(appDir.path, relativePath);
   }
@@ -96,6 +102,14 @@ class FileStorage {
     final cached = _jsonCache[relativePath];
     if (cached != null) {
       return _cloneJsonMap(cached);
+    }
+
+    if (memoryStore != null) {
+      try {
+        final result = await (memoryStore! as dynamic).readJson(relativePath);
+        _jsonCache[relativePath] = Map<String, dynamic>.from(result);
+        return _cloneJsonMap(result);
+      } catch (_) {}
     }
 
     final ioStopwatch = Stopwatch()..start();
@@ -247,6 +261,13 @@ class FileStorage {
   }
 
   static Future<bool> exists(String relativePath) async {
+    if (memoryStore != null) {
+      try {
+        return await (memoryStore! as dynamic).exists(relativePath);
+      } catch (_) {
+        return false;
+      }
+    }
     final path = await getFilePath(relativePath);
     return await File(path).exists() || await Directory(path).exists();
   }
