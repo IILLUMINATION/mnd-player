@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:mnd_core/mnd_core.dart';
 import 'package:mnd_player/utils/file_storage.dart';
 
 class ScriptCacheService {
@@ -8,6 +9,24 @@ class ScriptCacheService {
 
   final Map<String, Map<String, dynamic>> _cache = {};
   final Map<String, Completer<Map<String, dynamic>>> _pending = {};
+
+  ScriptAssetStore? _storeOverride;
+
+  /// Inject a custom [ScriptAssetStore] for all script reads.
+  /// When set, all reads go through the store instead of [FileStorage].
+  void setStore(ScriptAssetStore store) {
+    _storeOverride = store;
+  }
+
+  Future<bool> _exists(String path) async {
+    if (_storeOverride != null) return _storeOverride!.exists(path);
+    return FileStorage.exists(path);
+  }
+
+  Future<Map<String, dynamic>> _readJson(String path) async {
+    if (_storeOverride != null) return _storeOverride!.readJson(path);
+    return FileStorage.readJsonFile(path);
+  }
 
   Future<Map<String, dynamic>?> getScript(String fullPath) async {
     if (_cache.containsKey(fullPath)) {
@@ -22,13 +41,13 @@ class ScriptCacheService {
     _pending[fullPath] = completer;
 
     try {
-      if (!await FileStorage.exists(fullPath)) {
+      if (!await _exists(fullPath)) {
         _pending.remove(fullPath);
         completer.complete({});
         return null;
       }
 
-      final scriptData = await FileStorage.readJsonFile(fullPath);
+      final scriptData = await _readJson(fullPath);
       _cache[fullPath] = scriptData;
       _pending.remove(fullPath);
       completer.complete(scriptData);

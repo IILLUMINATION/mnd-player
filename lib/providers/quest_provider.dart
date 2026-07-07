@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:mnd_core/mnd_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mnd_player/utils/file_storage.dart';
+import 'package:mnd_player/providers/game_screen_provider.dart';
 import 'package:mnd_player_kit/services/key_derivation_service.dart';
 
 String? _extractTitleFromRawConfig(String content) {
@@ -41,6 +42,27 @@ Quest _buildCorruptedQuest({
 
 final questsProvider = FutureProvider<List<Quest>>((ref) async {
   if (kIsWeb) return [];
+
+  final store = GameScreenNotifier.nodeStore;
+  if (store != null) {
+    final ids = await store.listQuestIds();
+    final quests = <Quest>[];
+    for (final id in ids) {
+      try {
+        final quest = await store.getQuestDescriptor(id);
+        if (quest != null) quests.add(quest);
+      } catch (e) {
+        print('[Quests] NodeStore error for $id: $e');
+      }
+    }
+    quests.sort((a, b) {
+      final dateA = a.lastOpened ?? a.created ?? DateTime(1970);
+      final dateB = b.lastOpened ?? b.created ?? DateTime(1970);
+      return dateB.compareTo(dateA);
+    });
+    return quests;
+  }
+
   final questsDir = Directory(await FileStorage.getFilePath('quests'));
   if (!await questsDir.exists()) {
     await questsDir.create(recursive: true);

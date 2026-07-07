@@ -13,6 +13,7 @@ import 'package:mnd_core/mnd_core.dart' hide ScriptCacheService;
 import 'package:mnd_player/services/script_cache_service.dart';
 import 'package:mnd_player_kit/services/template_instance_resolver.dart';
 import 'package:mnd_player/utils/file_storage.dart';
+import 'package:mnd_player/utils/file_storage_asset_store.dart';
 import 'package:mnd_player/providers/game_state_provider.dart';
 import 'package:mnd_player/providers/node_provider.dart';
 import 'package:mnd_player/providers/template_provider.dart';
@@ -94,16 +95,34 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
 
   // ── Provider helpers (overridable by subclasses through gs- prefixed names) ──
 
-  Future<List<SavedNode>> gsReadAllNodes() =>
-      _ref.read(allQuestNodesProvider(_questId).future);
+  Future<List<SavedNode>> gsReadAllNodes() {
+    final store = nodeStore;
+    if (store != null) return store.getAllNodes(_questId);
+    return _ref.read(allQuestNodesProvider(_questId).future);
+  }
 
-  Future<List<Tag>> gsReadAllTags() =>
-      _ref.read(questTagsProvider(_questId).future);
+  Future<List<Tag>> gsReadAllTags() {
+    final store = nodeStore;
+    if (store != null) return store.getTags(_questId);
+    return _ref.read(questTagsProvider(_questId).future);
+  }
 
-  Future<Quest?> gsReadQuest() =>
-      _ref.read(questProvider(_questId).future);
+  Future<Quest?> gsReadQuest() {
+    final store = nodeStore;
+    if (store != null) return store.getQuestDescriptor(_questId);
+    return _ref.read(questProvider(_questId).future);
+  }
 
   Future<TemplateInstanceResolver?> gsReadTemplateResolver() async {
+    final store = nodeStore;
+    if (store != null) {
+      try {
+        final templates = await store.getTemplates(_questId);
+        return TemplateInstanceResolver(templatesById: templates);
+      } catch (_) {
+        return null;
+      }
+    }
     try {
       return await _ref.read(templateInstanceResolverProvider(_questId).future);
     } catch (_) {
@@ -157,6 +176,26 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
   Map<String, dynamic>? _questConfigCache;
   Map<String, SavedNode>? _nodesByIdCache;
   Map<String, Tag>? _tagsByIdCache;
+
+  /// Optional injected [NodeStore]. When set, all quest structural data
+  /// (config, nodes, templates, tags) is read from this store instead
+  /// of Riverpod providers that hit the filesystem directly.
+  static NodeStore? nodeStore;
+
+  /// Optional injected [ExtendedAssetStore]. When set, binary assets
+  /// (audio, images, fonts) are read from this store.
+  static ExtendedAssetStore? assetStore;
+
+  /// Lazy-built default asset store wrapping FileStorage.
+  static ExtendedAssetStore _defaultAssetStore() {
+    return FileStorageAssetStore(
+      readJson: (p) => FileStorage.readJsonFile(p),
+      exists: (p) => FileStorage.exists(p),
+      readBytes: (p) => FileStorage.readBytes(p),
+      readString: (p) async => '',
+      listDirectory: (p) => FileStorage.listFiles(p),
+    );
+  }
   static const String _legacyTitleOnNodeEnter =
       '\u041f\u0440\u0438 \u0437\u0430\u043f\u0443\u0441\u043a\u0435 \u043d\u043e\u0434\u044b';
   static const String _legacyTitleOnPress =
@@ -190,8 +229,9 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
   }
 
   Future<Uint8List?> _readAudioBytes(String relativePath) async {
-    final bytes = await FileStorage.readBytes(relativePath);
-    if (bytes != null && bytes.isNotEmpty) return bytes;
+    final store = assetStore ?? _defaultAssetStore();
+    final bytes = await store.readBytes(relativePath);
+    if (bytes != null && bytes.isNotEmpty) return Uint8List.fromList(bytes);
     try {
       final fullPath = await FileStorage.getFilePath(relativePath);
       if (fullPath.isEmpty) return null;
@@ -227,6 +267,11 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
 
   Future<Map<String, dynamic>> _readQuestConfigCached() async {
     if (_questConfigCache != null) return _questConfigCache!;
+    final store = nodeStore;
+    if (store != null) {
+      _questConfigCache = await store.getQuestConfig(_questId);
+      return _questConfigCache!;
+    }
     _questConfigCache = await FileStorage.readJsonFile(
       'quests/$_questId/config.json',
     );
@@ -283,6 +328,11 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
   }
 
   Future<Map<String, SavedNode>> _readNodesByIdDirectlyFromDisk() async {
+    final store = nodeStore;
+    if (store != null) {
+      final allNodes = await store.getAllNodes(_questId);
+      return {for (final n in allNodes) n.id: n};
+    }
     return FileStorage.synchronized('nodes_$_questId', () async {
       final nodesPath = 'quests/$_questId/nodes.json';
       if (!await FileStorage.exists(nodesPath)) {
