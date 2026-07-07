@@ -144,6 +144,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       triggerRefRaw = item.scriptTriggers?['onPress'];
     }
 
+    debugPrint('🎯 [INTERACT] type=${item.type} id=${item.id} hasOnPress=${triggerRefRaw != null} hasTarget=${item.targetNodeId}');
+
     if (triggerRefRaw == null &&
         item.type == 'button' &&
         item.scriptTriggers?['onAppear'] != null) {
@@ -165,13 +167,16 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
     if (triggerRefRaw != null) {
       final nextNodeId = await _executeButtonScript(triggerRefRaw, item.id);
+      debugPrint('🎯 [INTERACT] script done, nextNodeId=$nextNodeId, mounted=$mounted');
       if (!mounted) return;
       if (nextNodeId != null) {
+        debugPrint('🎯 [INTERACT] → loadNode($nextNodeId)');
         ref
             .read(gameScreenProvider(widget.questId).notifier)
             .loadNode(nextNodeId);
         return;
       }
+      debugPrint('🎯 [INTERACT] nextNodeId=null, staying on same node');
     }
 
     if (!mounted) return;
@@ -671,6 +676,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
                 itemCount: itemsToDisplay.length,
                 key: ValueKey('game_list_${screenState.presentationId}'),
+                addAutomaticKeepAlives: true,
                 itemBuilder: (context, index) {
                   final item = itemsToDisplay[index];
                   // Если spacing задан явно — отступ только между детьми,

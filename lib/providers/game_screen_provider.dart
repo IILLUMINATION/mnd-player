@@ -67,6 +67,18 @@ class GameScreenState {
     String? presentationId,
     String? fontFamily,
   }) {
+    if (presentationId != null && presentationId != this.presentationId) {
+      debugPrint('🚨 [STATE] PRESENTATION ID CHANGED: ${this.presentationId} → $presentationId');
+      debugPrint('🚨 [STATE] Stack: ${StackTrace.current}');
+    }
+    if (revealedRawItemCount != null && revealedRawItemCount == 0 && this.revealedRawItemCount > 0) {
+      debugPrint('🔁 [STATE] revealedRawItemCount RESET TO 0 (was ${this.revealedRawItemCount})');
+      debugPrint('🔁 [STATE] Stack: ${StackTrace.current}');
+    }
+    if (revealedItems != null && revealedItems!.isEmpty && this.revealedItems.isNotEmpty) {
+      debugPrint('🔁 [STATE] revealedItems CLEARED (was ${this.revealedItems.length} items)');
+      debugPrint('🔁 [STATE] Stack: ${StackTrace.current}');
+    }
     return GameScreenState(
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : error ?? this.error,
@@ -740,6 +752,7 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
 
   Future<void> loadNode(String nodeId) async {
     _log(">>> START LOAD NODE: '$nodeId'");
+    debugPrint('🚩 [LOAD NODE] called from: ${StackTrace.current}');
     _loadingNodeId = nodeId;
     _isRevealing = false;
     _revealRequested = false;
@@ -886,6 +899,7 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
   }
 
   void revealNextItem() {
+    debugPrint('🔍 [REVEAL] revealNextItem called, isRevealing=$_isRevealing, count=${state.revealedRawItemCount}/${state.revealedItems.length}, presentationId=${state.presentationId}');
     if (_isRevealing) {
       _revealRequested = true;
       return;
