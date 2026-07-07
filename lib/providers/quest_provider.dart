@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:mnd_core/mnd_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mnd_player/utils/file_storage.dart';
@@ -39,6 +40,7 @@ Quest _buildCorruptedQuest({
 }
 
 final questsProvider = FutureProvider<List<Quest>>((ref) async {
+  if (kIsWeb) return [];
   final questsDir = Directory(await FileStorage.getFilePath('quests'));
   if (!await questsDir.exists()) {
     await questsDir.create(recursive: true);

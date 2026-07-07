@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:mnd_core/mnd_core.dart';
@@ -263,9 +264,9 @@ class _TiledImageBoxState extends State<_TiledImageBox> {
     final resolved = widget.path.startsWith('quests/')
         ? widget.path
         : 'quests/${widget.questId}/${widget.path}';
-    final path = await FileStorage.getFilePath(resolved);
     if (!mounted) return;
-    if (path.isEmpty || !File(path).existsSync()) {
+    final bytes = await FileStorage.readBytes(resolved);
+    if (bytes == null) {
       setState(() {
         _resolvedPath = null;
         _image = null;
@@ -273,17 +274,16 @@ class _TiledImageBoxState extends State<_TiledImageBox> {
       return;
     }
     try {
-      final bytes = await File(path).readAsBytes();
       final img = await decodeImageFromList(bytes);
       if (!mounted) return;
       setState(() {
-        _resolvedPath = path;
+        _resolvedPath = resolved;
         _image = img;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _resolvedPath = path;
+        _resolvedPath = resolved;
         _image = null;
       });
     }

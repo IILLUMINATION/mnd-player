@@ -2285,20 +2285,15 @@ class _ChatItemWidgetState extends ConsumerState<ChatItemWidget>
 
   Widget _buildAvatar(Color color) {
     if (widget.item.avatarPath != null) {
-      return FutureBuilder<File?>(
-        future:
-            FileStorage.getFilePath(
-              'quests/${widget.questId}/${widget.item.avatarPath!}',
-            ).then((path) async {
-              final file = File(path);
-              if (await file.exists()) return file;
-              return null;
-            }),
+      return FutureBuilder<Uint8List?>(
+        future: FileStorage.readBytes(
+          'quests/${widget.questId}/${widget.item.avatarPath!}',
+        ),
         builder: (context, snapshot) {
           if (snapshot.hasData && snapshot.data != null) {
             return CircleAvatar(
               radius: 18,
-              backgroundImage: FileImage(snapshot.data!),
+              backgroundImage: MemoryImage(snapshot.data!),
             );
           }
           return CircleAvatar(

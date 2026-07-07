@@ -460,6 +460,7 @@ class _GameHudContentPanelState extends ConsumerState<GameHudContentPanel> {
 
   // Background image resolved path
   String? _backgroundImagePath;
+  Uint8List? _backgroundBytes;
   String? _lastResolvedImageId;
 
   @override
@@ -480,20 +481,31 @@ class _GameHudContentPanelState extends ConsumerState<GameHudContentPanel> {
   Future<void> _resolveBackgroundImage(String? imageId) async {
     _lastResolvedImageId = imageId;
     if (imageId == null || imageId.isEmpty) {
-      if (mounted) setState(() => _backgroundImagePath = null);
+      if (mounted) setState(() {
+        _backgroundImagePath = null;
+        _backgroundBytes = null;
+      });
       return;
     }
     try {
-      final p = await FileStorage.getFilePath(
-        'quests/${widget.questId}/res/images/$imageId',
-      );
-      if (await File(p).exists()) {
-        if (mounted) setState(() => _backgroundImagePath = p);
+      final p = 'quests/${widget.questId}/res/images/$imageId';
+      final bytes = await FileStorage.readBytes(p);
+      if (bytes != null) {
+        if (mounted) setState(() {
+          _backgroundImagePath = p;
+          _backgroundBytes = bytes;
+        });
       } else {
-        if (mounted) setState(() => _backgroundImagePath = null);
+        if (mounted) setState(() {
+          _backgroundImagePath = null;
+          _backgroundBytes = null;
+        });
       }
     } catch (_) {
-      if (mounted) setState(() => _backgroundImagePath = null);
+      if (mounted) setState(() {
+        _backgroundImagePath = null;
+        _backgroundBytes = null;
+      });
     }
   }
 
@@ -672,13 +684,14 @@ class _GameHudContentPanelState extends ConsumerState<GameHudContentPanel> {
     BorderRadius borderRadius,
   ) {
     final imgPath = _backgroundImagePath;
+    final imgBytes = _backgroundBytes;
     return Container(
       padding: EdgeInsets.all(cfg.padding),
       decoration: BoxDecoration(
         color: cfg.backgroundColor,
-        image: imgPath != null
+        image: imgBytes != null
             ? DecorationImage(
-                image: FileImage(File(imgPath)),
+                image: MemoryImage(imgBytes),
                 fit: BoxFit.cover,
               )
             : null,
@@ -1148,10 +1161,8 @@ class _HudImageState extends State<_HudImage> {
 
   Future<void> _resolve() async {
     try {
-      final p = await FileStorage.getFilePath(
-        'quests/${widget.questId}/${widget.resourcePath}',
-      );
-      if (await File(p).exists() && mounted) {
+      final p = 'quests/${widget.questId}/${widget.resourcePath}';
+      if (await FileStorage.exists(p) && mounted) {
         setState(() => _fullPath = p);
       }
     } catch (_) {}
