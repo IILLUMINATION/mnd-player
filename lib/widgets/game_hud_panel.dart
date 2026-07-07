@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:mnd_core/mnd_core.dart' hide ScriptCacheService;
@@ -1172,18 +1173,13 @@ class _HudImageState extends State<_HudImage> {
         constraints: const BoxConstraints(maxWidth: 200, maxHeight: 120),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(6),
-          child: Image.file(File(_fullPath!), fit: BoxFit.contain),
+          child: _WebHudImage(fullPath: _fullPath!),
         ),
       );
     }
     return ClipRRect(
       borderRadius: BorderRadius.circular(6),
-      child: Image.file(
-        File(_fullPath!),
-        width: sz,
-        height: sz,
-        fit: BoxFit.cover,
-      ),
+      child: _WebHudImage(fullPath: _fullPath!, width: sz, height: sz),
     );
   }
 }
@@ -1321,6 +1317,30 @@ class _SavePanelState extends ConsumerState<_SavePanel> {
           const SizedBox(height: 8),
         ],
       ),
+    );
+  }
+}
+
+class _WebHudImage extends StatelessWidget {
+  final String fullPath;
+  final double? width;
+  final double? height;
+  const _WebHudImage({required this.fullPath, this.width, this.height});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Uint8List?>(
+      future: FileStorage.readBytes(fullPath),
+      builder: (context, snapshot) {
+        final bytes = snapshot.data;
+        if (bytes == null) return const SizedBox.shrink();
+        return Image.memory(
+          bytes,
+          width: width,
+          height: height,
+          fit: width != null ? BoxFit.cover : BoxFit.contain,
+        );
+      },
     );
   }
 }
