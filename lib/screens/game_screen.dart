@@ -635,8 +635,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   }
 
   Widget _buildBody(GameScreenState screenState) {
+    final gameState = ref.watch(gameStateProvider);
     final quest = ref.watch(questProvider(widget.questId)).value;
-    final audioVolume = ref.watch(gameStateProvider.select((s) => s.variables['_internal_node_content_volume'] as double?));
     final transitionMode = _resolveTransitionMode(quest?.nodeTransitionMode);
     final scriptEngineMode = normalizeScriptEngineMode(quest?.scriptEngineMode);
 
@@ -645,10 +645,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        _buildBackground(screenState),
+        _buildBackground(screenState, gameState),
         SafeArea(
           child: Builder(
-            key: ValueKey('content_builder_${screenState.presentationId}'),
             builder: (context) {
               if (screenState.error != null) {
                 return Center(
@@ -685,7 +684,6 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                     effectivePad = 24.0;
                   }
                   return RepaintBoundary(
-                    key: ValueKey('item_${item.id}'),
                     child: ContentDisplayFactory.build(
                       item: item,
                       questId: widget.questId,
@@ -700,7 +698,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                       onNavigateToNode: (id) => ref
                           .read(gameScreenProvider(widget.questId).notifier)
                           .loadNode(id),
-                      audioVolume: audioVolume,
+                      audioVolume:
+                          gameState.variables['_internal_node_content_volume']
+                              as double?,
                       bottomPadding: effectivePad,
                       fontFamily: screenState.fontFamily,
                       scriptEngineMode: scriptEngineMode,
@@ -871,8 +871,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     );
   }
 
-  Widget _buildBackground(GameScreenState screenState) {
-    final gameState = ref.watch(gameStateProvider);
+  Widget _buildBackground(GameScreenState screenState, GameState gameState) {
     final blurValue =
         gameState.variables['_internal_background_blur'] as double? ?? 10.0;
     final questAsync = ref.watch(questProvider(widget.questId));
@@ -900,26 +899,15 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                 sigmaX: blurValue,
                 sigmaY: blurValue,
               ),
-              child: FutureBuilder<Uint8List?>(
-                future: FileStorage.readBytes(
-                  screenState.backgroundImagePath!,
-                ),
-                builder: (context, snapshot) {
-                  final bytes = snapshot.data;
-                  if (bytes == null) {
-                    return Container(color: const Color(0xFF0a0a0f));
-                  }
-                  return Image.memory(
-                    bytes,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: double.infinity,
-                    cacheWidth:
-                        MediaQuery.of(context).size.width.toInt() *
-                        (MediaQuery.of(context).devicePixelRatio.toInt()),
-                    gaplessPlayback: true,
-                  );
-                },
+              child: Image.file(
+                File(screenState.backgroundImagePath!),
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+                cacheWidth:
+                    MediaQuery.of(context).size.width.toInt() *
+                    (MediaQuery.of(context).devicePixelRatio.toInt()),
+                gaplessPlayback: true,
               ),
             ),
           ),
