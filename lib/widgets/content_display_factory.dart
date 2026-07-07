@@ -1,6 +1,7 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'dart:io';
+import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:mnd_core/mnd_core.dart' hide ScriptCacheService;
@@ -1636,7 +1637,7 @@ class ImageItemWidget extends StatelessWidget {
     this.roundedCornersOverride,
   });
 
-  void _openFullScreen(BuildContext context, File imageFile) {
+  void _openFullScreen(BuildContext context, Uint8List imageBytes) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -1648,7 +1649,7 @@ class ImageItemWidget extends StatelessWidget {
             leading: const BackButton(color: Colors.white),
           ),
           body: PhotoView(
-            imageProvider: FileImage(imageFile),
+            imageProvider: MemoryImage(imageBytes),
             minScale: PhotoViewComputedScale.contained,
             maxScale: PhotoViewComputedScale.covered * 2.5,
             heroAttributes: PhotoViewHeroAttributes(tag: item.id),
@@ -1658,27 +1659,32 @@ class ImageItemWidget extends StatelessWidget {
     );
   }
 
+  Future<Uint8List?> _loadImageBytes(String relativePath) async {
+    final bytes = await FileStorage.readBytes(relativePath);
+    if (bytes != null) return bytes;
+    try {
+      final path = await FileStorage.getFilePath(relativePath);
+      if (path.isEmpty) return null;
+      final file = File(path);
+      if (!await file.exists()) return null;
+      return await file.readAsBytes();
+    } catch (_) {
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<File?>(
+    return FutureBuilder<Uint8List?>(
       future: item.resourcePath != null
-          ? FileStorage.getFilePath(
-              'quests/$questId/${item.resourcePath!}',
-            ).then((path) async {
-              if (path.isEmpty) return null;
-              final file = File(path);
-              if (await file.exists()) return file;
-              return null;
-            })
+          ? _loadImageBytes('quests/$questId/${item.resourcePath!}')
           : Future.value(null),
       builder: (context, snapshot) {
-        final file = snapshot.data;
-        if (file != null) {
-          // По умолчанию углы скругляем (как было). Ряд может отключить
-          // это через `childImageRoundedCorners = false`.
+        final bytes = snapshot.data;
+        if (bytes != null) {
           final bool rounded = roundedCornersOverride ?? true;
-          final Widget rawImage = Image.file(
-            file,
+          final Widget rawImage = Image.memory(
+            bytes,
             fit: BoxFit.cover,
             width: double.infinity,
           );
@@ -1695,7 +1701,7 @@ class ImageItemWidget extends StatelessWidget {
           if (suppressInteractions) return imageWidget;
 
           return GestureDetector(
-            onTap: () => _openFullScreen(context, file),
+            onTap: () => _openFullScreen(context, bytes),
             child: imageWidget,
           );
         }
@@ -1740,11 +1746,10 @@ class _AudioItemPlayerState extends State<_AudioItemPlayer> {
   Future<void> _play() async {
     if (widget.item.resourcePath == null) return;
     try {
-      final path = await FileStorage.getFilePath(
-        'quests/${widget.questId}/${widget.item.resourcePath}',
-      );
-      if (!await File(path).exists()) {
-        _log('missing file: $path');
+      final relativePath = 'quests/${widget.questId}/${widget.item.resourcePath}';
+      final bytes = await FileStorage.readBytes(relativePath);
+      if (bytes == null || bytes.isEmpty) {
+        _log('missing file: $relativePath');
         return;
       }
 
@@ -1776,8 +1781,8 @@ class _AudioItemPlayerState extends State<_AudioItemPlayer> {
         );
       }
       await _player!.setVolume(volume);
-      _log('play start path=$path volume=${volume.toStringAsFixed(3)}');
-      await _player!.play(DeviceFileSource(path));
+      _log('play start relativePath=$relativePath volume=${volume.toStringAsFixed(3)}');
+      await _player!.play(BytesSource(bytes));
     } catch (e) {
       _log('play error: $e');
     }

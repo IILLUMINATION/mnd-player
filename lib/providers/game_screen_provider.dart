@@ -189,6 +189,20 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
     debugPrint('[QuestAudio][bg] $message');
   }
 
+  Future<Uint8List?> _readAudioBytes(String relativePath) async {
+    final bytes = await FileStorage.readBytes(relativePath);
+    if (bytes != null && bytes.isNotEmpty) return bytes;
+    try {
+      final fullPath = await FileStorage.getFilePath(relativePath);
+      if (fullPath.isEmpty) return null;
+      final file = File(fullPath);
+      if (!await file.exists()) return null;
+      return await file.readAsBytes();
+    } catch (_) {
+      return null;
+    }
+  }
+
   String _normalizeBackgroundAudioId(String rawId) {
     final normalized = rawId.trim().replaceAll('\\', '/');
     if (normalized.isEmpty) return normalized;
@@ -446,6 +460,7 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
   }
 
   Future<void> _loadCustomFont() async {
+    if (kIsWeb) return;
     try {
       final quest = await gsReadQuest();
       if (quest?.customFontFileName != null) {
@@ -1015,13 +1030,13 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
     try {
       final normalizedId = _normalizeBackgroundAudioId(audioId);
       final audioPath = 'quests/$_questId/$normalizedId';
-      final fullPath = await FileStorage.getFilePath(audioPath);
+      final bytes = await FileStorage.readBytes(audioPath);
 
-      if (await File(fullPath).exists()) {
+      if (bytes != null && bytes.isNotEmpty) {
         _currentSfxAudioId = normalizedId;
         await _soundEffectPlayer.stop();
         await _soundEffectPlayer.setVolume(volume.clamp(0.0, 1.0));
-        await _soundEffectPlayer.play(DeviceFileSource(fullPath));
+        await _soundEffectPlayer.play(BytesSource(bytes));
         _log("🔊 Sound effect: $audioId (Vol: $volume)");
       }
     } catch (e) {
@@ -1090,14 +1105,14 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
 
       final normalizedId = _normalizeBackgroundAudioId(audioId);
       final audioPath = 'quests/$_questId/$normalizedId';
-      final fullPath = await FileStorage.getFilePath(audioPath);
+      final bytes = await _readAudioBytes(audioPath);
 
-      if (await File(fullPath).exists()) {
+      if (bytes != null) {
         _currentBackgroundAudioId = normalizedId;
         _isMusicPaused = false;
         await _backgroundAudioPlayer.stop();
         await _backgroundAudioPlayer.setVolume(volume.clamp(0.0, 1.0));
-        await _backgroundAudioPlayer.play(DeviceFileSource(fullPath));
+        await _backgroundAudioPlayer.play(BytesSource(bytes));
         _log("🎵 Background music: $audioId (Vol: $volume, Loop: $loop)");
       }
     } catch (e) {
@@ -1211,9 +1226,9 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
       if (_currentBackgroundAudioId != null &&
           _backgroundAudioPlayer.state == PlayerState.stopped) {
         final audioPath = 'quests/$_questId/$_currentBackgroundAudioId';
-        final fullPath = await FileStorage.getFilePath(audioPath);
-        if (await File(fullPath).exists()) {
-          await _backgroundAudioPlayer.play(DeviceFileSource(fullPath));
+        final bytes = await _readAudioBytes(audioPath);
+        if (bytes != null) {
+          await _backgroundAudioPlayer.play(BytesSource(bytes));
         }
       }
     } catch (e) {
@@ -1273,12 +1288,11 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
 
       if (normalizedAudioId != null && normalizedAudioId.isNotEmpty) {
         final audioPath = 'quests/$_questId/$normalizedAudioId';
-        final fullPath = await FileStorage.getFilePath(audioPath);
         _audioLog(
-          'switch id=$normalizedAudioId path=$fullPath volume=${newVolume.clamp(0.0, 1.0)}',
+          'switch id=$normalizedAudioId path=$audioPath volume=${newVolume.clamp(0.0, 1.0)}',
         );
-
-        if (await File(fullPath).exists()) {
+        final bgBytes = await _readAudioBytes(audioPath);
+        if (bgBytes != null) {
           try {
             await _backgroundAudioPlayer.stop();
             final clamped = newVolume.clamp(0.0, 1.0);
@@ -1286,14 +1300,14 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
               return;
             }
             await _backgroundAudioPlayer.setVolume(clamped);
-            await _backgroundAudioPlayer.play(DeviceFileSource(fullPath));
+            await _backgroundAudioPlayer.play(BytesSource(bgBytes));
             await Future<void>.delayed(const Duration(milliseconds: 120));
             if (_backgroundAudioPlayer.state != PlayerState.playing &&
                 _currentBackgroundAudioId == normalizedAudioId) {
               _audioLog('first play did not reach playing, retrying once');
               await _backgroundAudioPlayer.stop();
               await _backgroundAudioPlayer.setVolume(clamped);
-              await _backgroundAudioPlayer.play(DeviceFileSource(fullPath));
+              await _backgroundAudioPlayer.play(BytesSource(bgBytes));
             }
             _log(
               "🔊 Background audio started: $normalizedAudioId (Vol: $newVolume)",

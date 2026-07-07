@@ -272,6 +272,22 @@ class FileStorage {
     return await File(path).exists() || await Directory(path).exists();
   }
 
+  static Future<Uint8List?> readBytes(String relativePath) async {
+    if (memoryStore != null) {
+      try {
+        final result = await (memoryStore! as dynamic).readBytes(relativePath);
+        if (result is Uint8List) return result;
+        return null;
+      } catch (_) {
+        return null;
+      }
+    }
+    final path = await getFilePath(relativePath);
+    final file = File(path);
+    if (!await file.exists()) return null;
+    return await file.readAsBytes();
+  }
+
   static Future<void> delete(String relativePath) async {
     final path = await getFilePath(relativePath);
     final file = File(path);
