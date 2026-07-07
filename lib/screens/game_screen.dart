@@ -53,8 +53,6 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   final FocusNode _focusNode = FocusNode();
   final TextEditingController _varsSearchController = TextEditingController();
   String _varsSearchQuery = '';
-  final ScrollController _scrollController = ScrollController();
-  String? _lastPresentationId;
   
 
   // Флаг для предотвращения лишних вызовов stop(), которые крашат Windows
@@ -135,7 +133,6 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   void dispose() {
     _focusNode.dispose();
     _varsSearchController.dispose();
-    _scrollController.dispose();
     super.dispose();
   }
 
@@ -167,10 +164,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     }
 
     if (triggerRefRaw != null) {
-      final scrollBefore = _scrollController.hasClients ? _scrollController.offset : 0.0;
-      debugPrint('📜 [INTERACT] before script — scrollOffset=${scrollBefore.toStringAsFixed(1)} hasOnPress=$triggerRefRaw');
       final nextNodeId = await _executeButtonScript(triggerRefRaw, item.id);
-      debugPrint('📜 [INTERACT] after script — nextNodeId=$nextNodeId mounted=$mounted');
       if (!mounted) return;
       if (nextNodeId != null) {
         ref
@@ -646,20 +640,6 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     final transitionMode = _resolveTransitionMode(quest?.nodeTransitionMode);
     final scriptEngineMode = normalizeScriptEngineMode(quest?.scriptEngineMode);
 
-    if (_lastPresentationId != null && _lastPresentationId != screenState.presentationId) {
-      debugPrint('📜 [SCROLL] presentationId changed ${_lastPresentationId} → ${screenState.presentationId} — jumping to 0');
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scrollController.hasClients) {
-          _scrollController.jumpTo(0);
-        }
-      });
-    }
-    _lastPresentationId = screenState.presentationId;
-
-    if (_scrollController.hasClients) {
-      debugPrint('📜 [SCROLL] build() pos=${_scrollController.offset.toStringAsFixed(1)} presentationId=${screenState.presentationId} revealedItems=${screenState.revealedItems.length}');
-    }
-
     final currentNode = screenState.currentNode;
 
     return Stack(
@@ -688,10 +668,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
               final double? nodeSpacing = screenState.currentNode?.itemSpacing;
               final double rootBottomPad = nodeSpacing ?? 24.0;
               final listView = ListView.builder(
-                controller: _scrollController,
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
                 itemCount: itemsToDisplay.length,
-                addAutomaticKeepAlives: true,
+                key: ValueKey('game_list_${screenState.presentationId}'),
                 itemBuilder: (context, index) {
                   final item = itemsToDisplay[index];
                   // Если spacing задан явно — отступ только между детьми,
@@ -733,17 +712,14 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                 },
               );
 
-              final content = KeyedSubtree(
-                key: ValueKey('list_wrapper_${screenState.presentationId}'),
-                child: _wrapNodeTransition(
-                  mode: transitionMode,
-                  presentationId: screenState.presentationId,
-                  child: Align(
-                    alignment: Alignment.topCenter,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 720),
-                      child: listView,
-                    ),
+              final content = _wrapNodeTransition(
+                mode: transitionMode,
+                presentationId: screenState.presentationId,
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 720),
+                    child: listView,
                   ),
                 ),
               );
@@ -804,12 +780,12 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     required String presentationId,
     required Widget child,
   }) {
-    if (mode == 'none') return child;
-
     final keyedChild = KeyedSubtree(
       key: ValueKey('node_$presentationId'),
       child: child,
     );
+
+    if (mode == 'none') return keyedChild;
 
     return AnimatedSwitcher(
       duration: Duration(milliseconds: mode == 'page' ? 820 : 280),
