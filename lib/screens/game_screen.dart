@@ -635,8 +635,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   }
 
   Widget _buildBody(GameScreenState screenState) {
-    final gameState = ref.watch(gameStateProvider);
     final quest = ref.watch(questProvider(widget.questId)).value;
+    final audioVolume = ref.watch(gameStateProvider.select((s) => s.variables['_internal_node_content_volume'] as double?));
     final transitionMode = _resolveTransitionMode(quest?.nodeTransitionMode);
     final scriptEngineMode = normalizeScriptEngineMode(quest?.scriptEngineMode);
 
@@ -645,9 +645,10 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        _buildBackground(screenState, gameState),
+        _buildBackground(screenState),
         SafeArea(
           child: Builder(
+            key: ValueKey('content_builder_${screenState.presentationId}'),
             builder: (context) {
               if (screenState.error != null) {
                 return Center(
@@ -699,9 +700,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                       onNavigateToNode: (id) => ref
                           .read(gameScreenProvider(widget.questId).notifier)
                           .loadNode(id),
-                      audioVolume:
-                          gameState.variables['_internal_node_content_volume']
-                              as double?,
+                      audioVolume: audioVolume,
                       bottomPadding: effectivePad,
                       fontFamily: screenState.fontFamily,
                       scriptEngineMode: scriptEngineMode,
@@ -872,7 +871,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     );
   }
 
-  Widget _buildBackground(GameScreenState screenState, GameState gameState) {
+  Widget _buildBackground(GameScreenState screenState) {
+    final gameState = ref.watch(gameStateProvider);
     final blurValue =
         gameState.variables['_internal_background_blur'] as double? ?? 10.0;
     final questAsync = ref.watch(questProvider(widget.questId));
