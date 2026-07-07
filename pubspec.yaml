@@ -15,7 +15,7 @@ dependencies:
     path: ../mnd_core
   mnd_player_kit:
     path: ../mnd_player_kit
-  flutter_riverpod: ^2.5.1
+  flutter_riverpod: ^2.6.1
   audioplayers: ^6.0.0
   markdown_widget: ^2.3.1
   photo_view: ^0.14.0
