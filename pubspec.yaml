@@ -12,9 +12,11 @@ dependencies:
   flutter:
     sdk: flutter
   mnd_core:
-    path: ../mnd_core
+    git:
+      url: https://github.com/IILLUMINATION/mnd-core.git
   mnd_player_kit:
-    path: ../mnd_player_kit
+    git:
+      url: https://github.com/IILLUMINATION/mnd-kit.git
   flutter_riverpod: ^2.5.1
   audioplayers: ^6.0.0
   markdown_widget: ^2.3.1
