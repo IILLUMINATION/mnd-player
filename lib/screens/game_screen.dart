@@ -705,6 +705,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                     effectivePad = 24.0;
                   }
                   return RepaintBoundary(
+                    key: ValueKey('item_${item.id}'),
                     child: ContentDisplayFactory.build(
                       item: item,
                       questId: widget.questId,
@@ -732,14 +733,17 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                 },
               );
 
-              final content = _wrapNodeTransition(
-                mode: transitionMode,
-                presentationId: screenState.presentationId,
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 720),
-                    child: listView,
+              final content = KeyedSubtree(
+                key: ValueKey('list_wrapper_${screenState.presentationId}'),
+                child: _wrapNodeTransition(
+                  mode: transitionMode,
+                  presentationId: screenState.presentationId,
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 720),
+                      child: listView,
+                    ),
                   ),
                 ),
               );
