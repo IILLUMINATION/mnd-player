@@ -421,6 +421,11 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
 
   Future<void> initializeGameSession() async {
     _log("Initializing session...");
+    if (kIsWeb) {
+      _isAudioBroken = true;
+      _log("Audio disabled on web");
+      return;
+    }
     try {
       try {
         await WakelockPlus.enable();

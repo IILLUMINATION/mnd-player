@@ -1745,6 +1745,10 @@ class _AudioItemPlayerState extends State<_AudioItemPlayer> {
 
   Future<void> _play() async {
     if (widget.item.resourcePath == null) return;
+    if (kIsWeb) {
+      _log('audio skipped on web');
+      return;
+    }
     try {
       final relativePath = 'quests/${widget.questId}/${widget.item.resourcePath}';
       final bytes = await FileStorage.readBytes(relativePath);
