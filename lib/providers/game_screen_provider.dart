@@ -229,16 +229,25 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
   }
 
   Future<Uint8List?> _readAudioBytes(String relativePath) async {
+    _log("   📁 _readAudioBytes: $relativePath (assetStore=${assetStore != null})");
     final store = assetStore ?? _defaultAssetStore();
     final bytes = await store.readBytes(relativePath);
-    if (bytes != null && bytes.isNotEmpty) return Uint8List.fromList(bytes);
+    _log("   📁 store.readBytes result: length=${bytes.length}");
+    if (bytes.isNotEmpty) return Uint8List.fromList(bytes);
     try {
       final fullPath = await FileStorage.getFilePath(relativePath);
+      _log("   📁 Fallback fullPath=$fullPath");
       if (fullPath.isEmpty) return null;
       final file = File(fullPath);
-      if (!await file.exists()) return null;
-      return await file.readAsBytes();
-    } catch (_) {
+      if (!await file.exists()) {
+        _log("   📁 Fallback file NOT EXISTS: $fullPath");
+        return null;
+      }
+      final fileBytes = await file.readAsBytes();
+      _log("   📁 Fallback file bytes: length=${fileBytes.length}");
+      return fileBytes;
+    } catch (e) {
+      _log("   📁 Fallback error: $e");
       return null;
     }
   }
@@ -1411,16 +1420,23 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
 
       if (finalBackgroundId != null && finalBackgroundId.isNotEmpty) {
         final imagePath = 'quests/$_questId/res/images/$finalBackgroundId';
+        _log("   🖼️ Loading background: finalBackgroundId=$finalBackgroundId path=$imagePath");
         final bgImageBytes = await _readAudioBytes(imagePath);
+        _log("   🖼️ Background read result: bytes=${bgImageBytes != null}, length=${bgImageBytes?.length ?? 0}");
 
         if (bgImageBytes != null) {
           if (mounted) {
             state = state.copyWith(
               backgroundImagePath: imagePath,
             );
+            _log("   🖼️ Background SET: $imagePath");
           }
           return;
+        } else {
+          _log("   🖼️ Background read FAILED (null bytes) for path: $imagePath");
         }
+      } else {
+        _log("   🖼️ No background asset found (node/tag/quest all null)");
       }
 
       if (mounted) state = state.copyWith(clearBackgroundImage: true);
