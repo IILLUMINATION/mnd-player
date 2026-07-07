@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:mnd_core/mnd_core.dart' hide ScriptCacheService;
 import 'package:mnd_player/services/script_cache_service.dart';
 import 'package:mnd_player/providers/game_screen_provider.dart';
@@ -289,7 +290,7 @@ class _GameHudPanelState extends ConsumerState<GameHudPanel> {
           );
 
     final buttons = <Widget>[];
-    if (node.allowSave && !locked && interactive) {
+    if (node.allowSave && !locked && interactive && !kIsWeb) {
       buttons.add(
         _HudButton(
           icon: Icons.save_alt_rounded,

@@ -1129,14 +1129,22 @@ class GlassButton extends StatelessWidget {
         spans.add(
           TextSpan(
             text: value.substring(start),
-            style: TextStyle(fontSize: 16, fontFamily: fontFamily),
+            style: TextStyle(
+              fontSize: 16,
+              fontFamily: fontFamily,
+              color: Colors.white,
+            ),
           ),
         );
       }
       if (spans.isEmpty && value.isNotEmpty) {
         return TextSpan(
           text: value,
-          style: TextStyle(fontSize: 16, fontFamily: fontFamily),
+          style: TextStyle(
+            fontSize: 16,
+            fontFamily: fontFamily,
+            color: Colors.white,
+          ),
         );
       }
     }
