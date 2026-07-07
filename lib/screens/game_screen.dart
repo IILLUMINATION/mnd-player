@@ -53,6 +53,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   final FocusNode _focusNode = FocusNode();
   final TextEditingController _varsSearchController = TextEditingController();
   String _varsSearchQuery = '';
+  final ScrollController _scrollController = ScrollController();
+  String? _lastPresentationId;
   
 
   // Флаг для предотвращения лишних вызовов stop(), которые крашат Windows
@@ -133,6 +135,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   void dispose() {
     _focusNode.dispose();
     _varsSearchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -143,8 +146,6 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     } else {
       triggerRefRaw = item.scriptTriggers?['onPress'];
     }
-
-    debugPrint('🎯 [INTERACT] type=${item.type} id=${item.id} hasOnPress=${triggerRefRaw != null} hasTarget=${item.targetNodeId}');
 
     if (triggerRefRaw == null &&
         item.type == 'button' &&
@@ -167,16 +168,13 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
     if (triggerRefRaw != null) {
       final nextNodeId = await _executeButtonScript(triggerRefRaw, item.id);
-      debugPrint('🎯 [INTERACT] script done, nextNodeId=$nextNodeId, mounted=$mounted');
       if (!mounted) return;
       if (nextNodeId != null) {
-        debugPrint('🎯 [INTERACT] → loadNode($nextNodeId)');
         ref
             .read(gameScreenProvider(widget.questId).notifier)
             .loadNode(nextNodeId);
         return;
       }
-      debugPrint('🎯 [INTERACT] nextNodeId=null, staying on same node');
     }
 
     if (!mounted) return;
@@ -645,6 +643,15 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     final transitionMode = _resolveTransitionMode(quest?.nodeTransitionMode);
     final scriptEngineMode = normalizeScriptEngineMode(quest?.scriptEngineMode);
 
+    if (_lastPresentationId != null && _lastPresentationId != screenState.presentationId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.jumpTo(0);
+        }
+      });
+    }
+    _lastPresentationId = screenState.presentationId;
+
     final currentNode = screenState.currentNode;
 
     return Stack(
@@ -673,9 +680,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
               final double? nodeSpacing = screenState.currentNode?.itemSpacing;
               final double rootBottomPad = nodeSpacing ?? 24.0;
               final listView = ListView.builder(
+                controller: _scrollController,
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
                 itemCount: itemsToDisplay.length,
-                key: ValueKey('game_list_${screenState.presentationId}'),
                 addAutomaticKeepAlives: true,
                 itemBuilder: (context, index) {
                   final item = itemsToDisplay[index];
@@ -785,12 +792,12 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     required String presentationId,
     required Widget child,
   }) {
+    if (mode == 'none') return child;
+
     final keyedChild = KeyedSubtree(
       key: ValueKey('node_$presentationId'),
       child: child,
     );
-
-    if (mode == 'none') return keyedChild;
 
     return AnimatedSwitcher(
       duration: Duration(milliseconds: mode == 'page' ? 820 : 280),
