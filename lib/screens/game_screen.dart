@@ -167,7 +167,10 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     }
 
     if (triggerRefRaw != null) {
+      final scrollBefore = _scrollController.hasClients ? _scrollController.offset : 0.0;
+      debugPrint('📜 [INTERACT] before script — scrollOffset=${scrollBefore.toStringAsFixed(1)} hasOnPress=$triggerRefRaw');
       final nextNodeId = await _executeButtonScript(triggerRefRaw, item.id);
+      debugPrint('📜 [INTERACT] after script — nextNodeId=$nextNodeId mounted=$mounted');
       if (!mounted) return;
       if (nextNodeId != null) {
         ref
@@ -644,6 +647,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     final scriptEngineMode = normalizeScriptEngineMode(quest?.scriptEngineMode);
 
     if (_lastPresentationId != null && _lastPresentationId != screenState.presentationId) {
+      debugPrint('📜 [SCROLL] presentationId changed ${_lastPresentationId} → ${screenState.presentationId} — jumping to 0');
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (_scrollController.hasClients) {
           _scrollController.jumpTo(0);
@@ -651,6 +655,10 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       });
     }
     _lastPresentationId = screenState.presentationId;
+
+    if (_scrollController.hasClients) {
+      debugPrint('📜 [SCROLL] build() pos=${_scrollController.offset.toStringAsFixed(1)} presentationId=${screenState.presentationId} revealedItems=${screenState.revealedItems.length}');
+    }
 
     final currentNode = screenState.currentNode;
 
