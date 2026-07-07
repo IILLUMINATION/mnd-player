@@ -11,7 +11,7 @@ import 'package:uuid/uuid.dart';
 
 import 'package:mnd_core/mnd_core.dart' hide ScriptCacheService;
 import 'package:mnd_player/services/script_cache_service.dart';
-import 'package:mnd_player/services/template_instance_resolver.dart';
+import 'package:mnd_player_kit/services/template_instance_resolver.dart';
 import 'package:mnd_player/utils/file_storage.dart';
 import 'package:mnd_player/providers/game_state_provider.dart';
 import 'package:mnd_player/providers/node_provider.dart';

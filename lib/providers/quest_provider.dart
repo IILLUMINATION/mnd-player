@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:mnd_core/mnd_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mnd_player/utils/file_storage.dart';
-import 'package:mnd_player/utils/key_derivation_service.dart';
+import 'package:mnd_player_kit/services/key_derivation_service.dart';
 
 String? _extractTitleFromRawConfig(String content) {
   try {

@@ -1,5 +1,5 @@
 import 'package:mnd_core/mnd_core.dart';
-import 'package:mnd_player/services/template_instance_resolver.dart';
+import 'package:mnd_player_kit/services/template_instance_resolver.dart';
 import 'package:mnd_player/utils/file_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
