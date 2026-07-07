@@ -900,15 +900,24 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                 sigmaX: blurValue,
                 sigmaY: blurValue,
               ),
-              child: Image.memory(
-                screenState.backgroundImageBytes!,
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: double.infinity,
-                cacheWidth:
-                    MediaQuery.of(context).size.width.toInt() *
-                    (MediaQuery.of(context).devicePixelRatio.toInt()),
-                gaplessPlayback: true,
+              child: FutureBuilder<Uint8List?>(
+                future: Future.value(screenState.backgroundImageBytes),
+                builder: (context, snapshot) {
+                  final bytes = snapshot.data;
+                  if (bytes == null) {
+                    return Container(color: const Color(0xFF0a0a0f));
+                  }
+                  return Image.memory(
+                    bytes,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                    cacheWidth:
+                        MediaQuery.of(context).size.width.toInt() *
+                        (MediaQuery.of(context).devicePixelRatio.toInt()),
+                    gaplessPlayback: true,
+                  );
+                },
               ),
             ),
           ),
