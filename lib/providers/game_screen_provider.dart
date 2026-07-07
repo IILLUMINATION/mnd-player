@@ -1086,13 +1086,12 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
     try {
       final normalizedId = _normalizeBackgroundAudioId(audioId);
       final audioPath = 'quests/$_questId/$normalizedId';
-      final bytes = await FileStorage.readBytes(audioPath);
-
-      if (bytes != null && bytes.isNotEmpty) {
+      final fullPath = await FileStorage.getFilePath(audioPath);
+      if (await File(fullPath).exists()) {
         _currentSfxAudioId = normalizedId;
         await _soundEffectPlayer.stop();
         await _soundEffectPlayer.setVolume(volume.clamp(0.0, 1.0));
-        await _soundEffectPlayer.play(BytesSource(bytes));
+        await _soundEffectPlayer.play(DeviceFileSource(fullPath));
         _log("🔊 Sound effect: $audioId (Vol: $volume)");
       }
     } catch (e) {
@@ -1161,14 +1160,13 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
 
       final normalizedId = _normalizeBackgroundAudioId(audioId);
       final audioPath = 'quests/$_questId/$normalizedId';
-      final bytes = await _readAssetBytes(audioPath);
-
-      if (bytes != null) {
+      final fullPath = await FileStorage.getFilePath(audioPath);
+      if (await File(fullPath).exists()) {
         _currentBackgroundAudioId = normalizedId;
         _isMusicPaused = false;
         await _backgroundAudioPlayer.stop();
         await _backgroundAudioPlayer.setVolume(volume.clamp(0.0, 1.0));
-        await _backgroundAudioPlayer.play(BytesSource(bytes));
+        await _backgroundAudioPlayer.play(DeviceFileSource(fullPath));
         _log("🎵 Background music: $audioId (Vol: $volume, Loop: $loop)");
       }
     } catch (e) {
@@ -1282,9 +1280,9 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
       if (_currentBackgroundAudioId != null &&
           _backgroundAudioPlayer.state == PlayerState.stopped) {
         final audioPath = 'quests/$_questId/$_currentBackgroundAudioId';
-        final bytes = await _readAssetBytes(audioPath);
-        if (bytes != null) {
-          await _backgroundAudioPlayer.play(BytesSource(bytes));
+        final fullPath = await FileStorage.getFilePath(audioPath);
+        if (await File(fullPath).exists()) {
+          await _backgroundAudioPlayer.play(DeviceFileSource(fullPath));
         }
       }
     } catch (e) {
@@ -1344,11 +1342,11 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
 
       if (normalizedAudioId != null && normalizedAudioId.isNotEmpty) {
         final audioPath = 'quests/$_questId/$normalizedAudioId';
+        final fullPath = await FileStorage.getFilePath(audioPath);
         _audioLog(
           'switch id=$normalizedAudioId path=$audioPath volume=${newVolume.clamp(0.0, 1.0)}',
         );
-        final bgBytes = await _readAssetBytes(audioPath);
-        if (bgBytes != null) {
+        if (await File(fullPath).exists()) {
           try {
             await _backgroundAudioPlayer.stop();
             final clamped = newVolume.clamp(0.0, 1.0);
@@ -1356,14 +1354,14 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
               return;
             }
             await _backgroundAudioPlayer.setVolume(clamped);
-            await _backgroundAudioPlayer.play(BytesSource(bgBytes));
+            await _backgroundAudioPlayer.play(DeviceFileSource(fullPath));
             await Future<void>.delayed(const Duration(milliseconds: 120));
             if (_backgroundAudioPlayer.state != PlayerState.playing &&
                 _currentBackgroundAudioId == normalizedAudioId) {
               _audioLog('first play did not reach playing, retrying once');
               await _backgroundAudioPlayer.stop();
               await _backgroundAudioPlayer.setVolume(clamped);
-              await _backgroundAudioPlayer.play(BytesSource(bgBytes));
+              await _backgroundAudioPlayer.play(DeviceFileSource(fullPath));
             }
             _log(
               "🔊 Background audio started: $normalizedAudioId (Vol: $newVolume)",
@@ -1412,9 +1410,7 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
       if (finalBackgroundId != null && finalBackgroundId.isNotEmpty) {
         final imagePath = 'quests/$_questId/res/images/$finalBackgroundId';
         final fullPath = await FileStorage.getFilePath(imagePath);
-        final bgImageBytes = await _readAssetBytes(imagePath);
-
-        if (bgImageBytes != null) {
+        if (await File(fullPath).exists()) {
           if (mounted) state = state.copyWith(backgroundImagePath: fullPath);
           return;
         }
