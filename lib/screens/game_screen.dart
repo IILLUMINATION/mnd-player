@@ -881,7 +881,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        if (screenState.backgroundImageBytes == null)
+        if (screenState.backgroundImagePath == null)
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -901,7 +901,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                 sigmaY: blurValue,
               ),
               child: FutureBuilder<Uint8List?>(
-                future: Future.value(screenState.backgroundImageBytes),
+                future: FileStorage.readBytes(
+                  screenState.backgroundImagePath!,
+                ),
                 builder: (context, snapshot) {
                   final bytes = snapshot.data;
                   if (bytes == null) {

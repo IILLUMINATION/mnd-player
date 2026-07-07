@@ -31,7 +31,6 @@ class GameScreenState {
   final List<ContentItem> revealedItems;
   final List<ContentItem> resolvedHudPanels;
   final String? backgroundImagePath;
-  final Uint8List? backgroundImageBytes;
   final double? remainingSeconds;
   final String presentationId;
   final String? fontFamily;
@@ -44,7 +43,6 @@ class GameScreenState {
     this.revealedItems = const [],
     this.resolvedHudPanels = const [],
     this.backgroundImagePath,
-    this.backgroundImageBytes,
     this.remainingSeconds,
     this.presentationId = '',
     this.fontFamily,
@@ -60,7 +58,6 @@ class GameScreenState {
     List<ContentItem>? revealedItems,
     List<ContentItem>? resolvedHudPanels,
     String? backgroundImagePath,
-    Uint8List? backgroundImageBytes,
     bool clearBackgroundImage = false,
     double? remainingSeconds,
     bool clearRemainingSeconds = false,
@@ -77,9 +74,6 @@ class GameScreenState {
       backgroundImagePath: clearBackgroundImage
           ? null
           : backgroundImagePath ?? this.backgroundImagePath,
-      backgroundImageBytes: clearBackgroundImage
-          ? null
-          : backgroundImageBytes ?? this.backgroundImageBytes,
       remainingSeconds: clearRemainingSeconds
           ? null
           : remainingSeconds ?? this.remainingSeconds,
@@ -1419,15 +1413,12 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
         final imagePath = 'quests/$_questId/res/images/$finalBackgroundId';
         final bgImageBytes = await _readAssetBytes(imagePath);
 
-        if (bgImageBytes != null) {
-          if (mounted) {
-            state = state.copyWith(
-              backgroundImagePath: imagePath,
-              backgroundImageBytes: bgImageBytes,
-            );
-          }
-          return;
+      if (bgImageBytes != null) {
+        if (mounted) {
+          state = state.copyWith(backgroundImagePath: imagePath);
         }
+        return;
+      }
       }
 
       if (mounted) state = state.copyWith(clearBackgroundImage: true);
