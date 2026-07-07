@@ -31,6 +31,7 @@ class GameScreenState {
   final List<ContentItem> revealedItems;
   final List<ContentItem> resolvedHudPanels;
   final String? backgroundImagePath;
+  final Uint8List? backgroundImageBytes;
   final double? remainingSeconds;
   final String presentationId;
   final String? fontFamily;
@@ -43,6 +44,7 @@ class GameScreenState {
     this.revealedItems = const [],
     this.resolvedHudPanels = const [],
     this.backgroundImagePath,
+    this.backgroundImageBytes,
     this.remainingSeconds,
     this.presentationId = '',
     this.fontFamily,
@@ -58,6 +60,7 @@ class GameScreenState {
     List<ContentItem>? revealedItems,
     List<ContentItem>? resolvedHudPanels,
     String? backgroundImagePath,
+    Uint8List? backgroundImageBytes,
     bool clearBackgroundImage = false,
     double? remainingSeconds,
     bool clearRemainingSeconds = false,
@@ -74,6 +77,9 @@ class GameScreenState {
       backgroundImagePath: clearBackgroundImage
           ? null
           : backgroundImagePath ?? this.backgroundImagePath,
+      backgroundImageBytes: clearBackgroundImage
+          ? null
+          : backgroundImageBytes ?? this.backgroundImageBytes,
       remainingSeconds: clearRemainingSeconds
           ? null
           : remainingSeconds ?? this.remainingSeconds,
@@ -228,26 +234,17 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
     debugPrint('[QuestAudio][bg] $message');
   }
 
-  Future<Uint8List?> _readAudioBytes(String relativePath) async {
-    _log("   📁 _readAudioBytes: $relativePath (assetStore=${assetStore != null})");
+  Future<Uint8List?> _readAssetBytes(String relativePath) async {
     final store = assetStore ?? _defaultAssetStore();
     final bytes = await store.readBytes(relativePath);
-    _log("   📁 store.readBytes result: length=${bytes.length}");
     if (bytes.isNotEmpty) return Uint8List.fromList(bytes);
     try {
       final fullPath = await FileStorage.getFilePath(relativePath);
-      _log("   📁 Fallback fullPath=$fullPath");
       if (fullPath.isEmpty) return null;
       final file = File(fullPath);
-      if (!await file.exists()) {
-        _log("   📁 Fallback file NOT EXISTS: $fullPath");
-        return null;
-      }
-      final fileBytes = await file.readAsBytes();
-      _log("   📁 Fallback file bytes: length=${fileBytes.length}");
-      return fileBytes;
-    } catch (e) {
-      _log("   📁 Fallback error: $e");
+      if (!await file.exists()) return null;
+      return await file.readAsBytes();
+    } catch (_) {
       return null;
     }
   }
@@ -1170,7 +1167,7 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
 
       final normalizedId = _normalizeBackgroundAudioId(audioId);
       final audioPath = 'quests/$_questId/$normalizedId';
-      final bytes = await _readAudioBytes(audioPath);
+      final bytes = await _readAssetBytes(audioPath);
 
       if (bytes != null) {
         _currentBackgroundAudioId = normalizedId;
@@ -1291,7 +1288,7 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
       if (_currentBackgroundAudioId != null &&
           _backgroundAudioPlayer.state == PlayerState.stopped) {
         final audioPath = 'quests/$_questId/$_currentBackgroundAudioId';
-        final bytes = await _readAudioBytes(audioPath);
+        final bytes = await _readAssetBytes(audioPath);
         if (bytes != null) {
           await _backgroundAudioPlayer.play(BytesSource(bytes));
         }
@@ -1356,7 +1353,7 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
         _audioLog(
           'switch id=$normalizedAudioId path=$audioPath volume=${newVolume.clamp(0.0, 1.0)}',
         );
-        final bgBytes = await _readAudioBytes(audioPath);
+        final bgBytes = await _readAssetBytes(audioPath);
         if (bgBytes != null) {
           try {
             await _backgroundAudioPlayer.stop();
@@ -1420,23 +1417,17 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
 
       if (finalBackgroundId != null && finalBackgroundId.isNotEmpty) {
         final imagePath = 'quests/$_questId/res/images/$finalBackgroundId';
-        _log("   🖼️ Loading background: finalBackgroundId=$finalBackgroundId path=$imagePath");
-        final bgImageBytes = await _readAudioBytes(imagePath);
-        _log("   🖼️ Background read result: bytes=${bgImageBytes != null}, length=${bgImageBytes?.length ?? 0}");
+        final bgImageBytes = await _readAssetBytes(imagePath);
 
         if (bgImageBytes != null) {
           if (mounted) {
             state = state.copyWith(
               backgroundImagePath: imagePath,
+              backgroundImageBytes: bgImageBytes,
             );
-            _log("   🖼️ Background SET: $imagePath");
           }
           return;
-        } else {
-          _log("   🖼️ Background read FAILED (null bytes) for path: $imagePath");
         }
-      } else {
-        _log("   🖼️ No background asset found (node/tag/quest all null)");
       }
 
       if (mounted) state = state.copyWith(clearBackgroundImage: true);

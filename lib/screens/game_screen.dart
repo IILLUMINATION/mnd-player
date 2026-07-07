@@ -880,7 +880,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        if (screenState.backgroundImagePath == null)
+        if (screenState.backgroundImageBytes == null)
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
@@ -899,26 +899,15 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                 sigmaX: blurValue,
                 sigmaY: blurValue,
               ),
-              child: FutureBuilder<Uint8List?>(
-                future: FileStorage.readBytes(
-                  screenState.backgroundImagePath!,
-                ),
-                builder: (context, snapshot) {
-                  final bytes = snapshot.data;
-                  if (bytes == null) {
-                    return Container(color: const Color(0xFF0a0a0f));
-                  }
-                  return Image.memory(
-                    bytes,
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: double.infinity,
-                    cacheWidth:
-                        MediaQuery.of(context).size.width.toInt() *
-                        (MediaQuery.of(context).devicePixelRatio.toInt()),
-                    gaplessPlayback: true,
-                  );
-                },
+              child: Image.memory(
+                screenState.backgroundImageBytes!,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                height: double.infinity,
+                cacheWidth:
+                    MediaQuery.of(context).size.width.toInt() *
+                    (MediaQuery.of(context).devicePixelRatio.toInt()),
+                gaplessPlayback: true,
               ),
             ),
           ),
