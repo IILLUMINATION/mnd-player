@@ -1355,10 +1355,14 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
 
       if (finalBackgroundId != null && finalBackgroundId.isNotEmpty) {
         final imagePath = 'quests/$_questId/res/images/$finalBackgroundId';
-        final fullPath = await FileStorage.getFilePath(imagePath);
+        final bgImageBytes = await _readAudioBytes(imagePath);
 
-        if (await File(fullPath).exists()) {
-          if (mounted) state = state.copyWith(backgroundImagePath: fullPath);
+        if (bgImageBytes != null) {
+          if (mounted) {
+            state = state.copyWith(
+              backgroundImagePath: imagePath,
+            );
+          }
           return;
         }
       }
