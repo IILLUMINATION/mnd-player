@@ -86,6 +86,52 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
   final Ref _ref;
   final String _questId;
 
+  // Expose internals for subclasses that override provider helpers
+  // ignore: invalid_use_of_protected_member
+  Ref get gsRef => _ref;
+  // ignore: invalid_use_of_protected_member
+  String get gsQuestId => _questId;
+
+  // ── Provider helpers (overridable by subclasses through gs- prefixed names) ──
+
+  Future<List<SavedNode>> gsReadAllNodes() =>
+      _ref.read(allQuestNodesProvider(_questId).future);
+
+  Future<List<Tag>> gsReadAllTags() =>
+      _ref.read(questTagsProvider(_questId).future);
+
+  Future<Quest?> gsReadQuest() =>
+      _ref.read(questProvider(_questId).future);
+
+  Future<TemplateInstanceResolver?> gsReadTemplateResolver() async {
+    try {
+      return await _ref.read(templateInstanceResolverProvider(_questId).future);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> gsPerformAutosave(
+    String questId,
+    String currentNodeId,
+    Map<String, dynamic> variables,
+    Map<String, Map<String, dynamic>> tables,
+  ) async {
+    await _ref
+        .read(saveGameServiceProvider)
+        .performAutosave(
+          questId: questId,
+          currentNodeId: currentNodeId,
+          variables: variables,
+          tables: tables,
+        );
+    _ref.invalidate(saveSlotsProvider(questId));
+  }
+
+  void gsInvalidateNodesProvider() {
+    _ref.invalidate(allQuestNodesProvider(_questId));
+  }
+
   final AudioPlayer _backgroundAudioPlayer = AudioPlayer();
   final AudioPlayer _soundEffectPlayer = AudioPlayer();
   StreamSubscription<PlayerState>? _backgroundPlayerStateSub;
@@ -175,7 +221,7 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
 
   Future<void> _ensureNodesCache() async {
     if (_nodesByIdCache != null) return;
-    final allNodes = await _ref.read(allQuestNodesProvider(_questId).future);
+    final allNodes = await gsReadAllNodes();
     _nodesByIdCache = {for (final n in allNodes) n.id: n};
   }
 
@@ -186,7 +232,7 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
   /// как есть).
   Future<TemplateInstanceResolver?> _getTemplateResolver() async {
     try {
-      return await _ref.read(templateInstanceResolverProvider(_questId).future);
+      return await gsReadTemplateResolver();
     } catch (e) {
       _log('⚠️ Template resolver unavailable: $e');
       return null;
@@ -249,7 +295,7 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
 
   Future<void> _ensureTagsCache() async {
     if (_tagsByIdCache != null) return;
-    final tags = await _ref.read(questTagsProvider(_questId).future);
+    final tags = await gsReadAllTags();
     _tagsByIdCache = {for (final t in tags) t.id: t};
   }
 
@@ -262,7 +308,7 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
 
   Future<void> reloadNodeAfterEditor(String nodeId) async {
     invalidateQuestCaches();
-    _ref.invalidate(allQuestNodesProvider(_questId));
+    gsInvalidateNodesProvider();
 
     try {
       _nodesByIdCache = await _readNodesByIdDirectlyFromDisk();
@@ -282,15 +328,12 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
         (key, value) => MapEntry(key, value.toJson()),
       );
 
-      await _ref
-          .read(saveGameServiceProvider)
-          .performAutosave(
-            questId: _questId,
-            currentNodeId: state.currentNode!.id,
-            variables: currentState.variables,
-            tables: tablesJson,
-          );
-      _ref.invalidate(saveSlotsProvider(_questId));
+      await gsPerformAutosave(
+        _questId,
+        state.currentNode!.id,
+        currentState.variables,
+        tablesJson,
+      );
     } catch (e) {
       _log("Autosave failed: $e");
     }
@@ -404,7 +447,7 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
 
   Future<void> _loadCustomFont() async {
     try {
-      final quest = await _ref.read(questProvider(_questId).future);
+      final quest = await gsReadQuest();
       if (quest?.customFontFileName != null) {
         _log("Loading custom font: ${quest!.customFontFileName}");
         final fontFamily = await FontService.loadQuestFont(
@@ -1289,7 +1332,7 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
       }
 
       if (finalBackgroundId == null) {
-        final quest = await _ref.read(questProvider(_questId).future);
+        final quest = await gsReadQuest();
         if (quest?.backgroundAssetId != null &&
             quest!.backgroundAssetId!.isNotEmpty) {
           finalBackgroundId = quest.backgroundAssetId;
