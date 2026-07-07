@@ -1762,10 +1762,10 @@ class _AudioItemPlayerState extends State<_AudioItemPlayer> {
 
       // lowLatency on Android maps to SoundPool and can truncate long tracks.
       // Content audio in quests may include full-length ambiance/music, so use mediaPlayer.
-      if (Platform.isAndroid) {
+      if (!kIsWeb && Platform.isAndroid) {
         await _player!.setPlayerMode(PlayerMode.mediaPlayer);
       }
-      if (Platform.isAndroid || Platform.isIOS) {
+      if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
         await _player!.setAudioContext(
           AudioContext(
             android: AudioContextAndroid(

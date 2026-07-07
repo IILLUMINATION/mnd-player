@@ -334,6 +334,7 @@ class GameScreenNotifier extends StateNotifier<GameScreenState> {
   }
 
   Future<void> performAutosave() async {
+    if (kIsWeb) return;
     if (state.currentNode == null) return;
     try {
       final currentState = _ref.read(gameStateProvider);
